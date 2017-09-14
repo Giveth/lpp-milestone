@@ -1,0 +1,33 @@
+{
+  "name": "lpp-milestone",
+  "version": "0.0.1",
+  "description": "Simple milestone plugin for liquid plading.",
+  "main": "index.js",
+  "scripts": {
+    "test": "solcpiler; mocha --harmony"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Giveth/lpp-milestone.git"
+  },
+  "keywords": [
+    "liquid",
+    "pledging",
+    "ethereum",
+    "solidity",
+    "milestone"
+  ],
+  "author": "Jordi Baylina",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Giveth/lpp-milestone/issues"
+  },
+  "homepage": "https://github.com/Giveth/lpp-milestone#readme",
+  "dependencies": {
+    "liquidpledging": "0.0.5",
+    "runethtx": "^0.1.1",
+    "chai": "^4.1.2",
+    "ethconnector": "0.0.25"
+  },
+  "devDependencies": {}
+}
