@@ -13,6 +13,8 @@ contract LPPMilestone {
     uint public maxAmount;
     address public reviewer;
     address public recipient;
+    address public newReviewer;
+    address public newRecipient;
     bool public accepted;
     bool public canceled;
 
@@ -24,6 +26,36 @@ contract LPPMilestone {
         maxAmount = _maxAmount;
         recipient = _recipient;
         reviewer = _reviewer;
+    }
+
+    modifier onlyRecipient() {
+        require(msg.sender == recipient);
+        _;
+    }
+
+    modifier onlyReviewer() {
+        require(msg.sender == reviewer);
+        _;
+    }
+
+    function changeRecipient(address _newRecipient) onlyRecipient {
+        newRecipient = _newRecipient;
+    }
+
+    function changeReviewer(address _newReviewer) onlyReviewer {
+        newReviewer = _newReviewer;
+    }
+
+    function acceptNewRecipient() {
+        require(newRecipient == msg.sender);
+        recipient = newRecipient;
+        newRecipient = 0;
+    }
+
+    function acceptNewReviewer() {
+        require(newReviewer == msg.sender);
+        reviewer = newReviewer;
+        newReviewer = 0;
     }
 
     function beforeTransfer(uint64 noteManager, uint64 noteFrom, uint64 noteTo, uint64 context, uint amount) returns (uint maxAllowed) {
@@ -60,7 +92,7 @@ contract LPPMilestone {
 
             if (returnFunds > 0) {  // Sends exceding money back
                 cumulatedReceived -= returnFunds;
-                liquidPledging.directTransfer(idProject, noteTo, oldNote, returnFunds);
+                liquidPledging.cancelNote(idProject, noteTo, returnFunds);
             }
         }
     }
@@ -69,16 +101,29 @@ contract LPPMilestone {
         require(!canceled);
         require(!accepted);
         accepted = true;
-
-        liquidPledging.withdraw(idNote, cumulatedReceived )
-
-        if (this.balance>0) recipient.transfer(this.balance);
     }
 
     function cancelMilestone() onlyReviewer {
         require(!canceled);
         require(!accepted);
 
+        liquidPledging.cancelProject(idProject);
+
+        canceled = true;
+    }
+
+    function withdraw(uint64 idNote, uint amount) onlyRecipient {
+        require(!canceled);
+        require(accepted);
+        liquidpledging.withdraw(idNote, amount);
+        collect();
+    }
+
+    function mWithdraw(uint[] notesAmounts) onlyRecipient {
+        require(!canceled);
+        require(accepted);
+        liquidPledging.mWithdraw(notesAmounts);
+        collect();
     }
 
     function collect() onlyRecipient {

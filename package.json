@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/Giveth/lpp-milestone#readme",
   "dependencies": {
-    "liquidpledging": "0.0.5",
+    "liquidpledging": "0.0.7",
     "runethtx": "^0.1.1",
     "chai": "^4.1.2",
     "ethconnector": "0.0.25"
