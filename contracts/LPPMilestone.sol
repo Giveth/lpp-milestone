@@ -9,7 +9,7 @@ contract LPPMilestone {
     uint constant TO_PROPOSEDPROJECT = 511;
 
     LiquidPledging public liquidPledging;
-    uint public idProject;
+    uint64 public idProject;
     uint public maxAmount;
     address public reviewer;
     address public recipient;
@@ -22,7 +22,7 @@ contract LPPMilestone {
 
     function LPPMilestone(LiquidPledging _liquidPledging, string name, uint parentProject, address _recipient, uint _maxAmount, address _reviewer) {
         liquidPledging = _liquidPledging;
-        idProject = liquidPledging.addProject(name, address(this), 0, address(this));
+        idProject = liquidPledging.addProject(name, address(this), 0, 0, ILiquidPledgingPlugin(this));
         maxAmount = _maxAmount;
         recipient = _recipient;
         reviewer = _reviewer;
@@ -65,21 +65,21 @@ contract LPPMilestone {
         // only allow from the proposed project to the project in order normalize it.
         if (   (context == TO_PROPOSEDPROJECT)
             || (   (context == TO_OWNER)
-                && (fromProposedProject != projectId)))
+                && (fromProposedProject != idProject)))
         {
             if (accepted || canceled) return 0;
         }
         return amount;
     }
 
-    function afterTransfer(uint64 noteManager, uint64 noteFrom, uint64 noteTo, uint64 context, uint _amount) {
+    function afterTransfer(uint64 noteManager, uint64 noteFrom, uint64 noteTo, uint64 context, uint amount) {
         uint returnFunds;
         require(msg.sender == address(liquidPledging));
 
         var (, oldOwner, , , , , ) = liquidPledging.getNote(noteFrom);
         var (, , , , , oldNote, ) = liquidPledging.getNote(noteTo);
 
-        if ((context == TO_OWNER)&&(oldOwner != projectId)) {  // Recipient of the funds from a different owner
+        if ((context == TO_OWNER)&&(oldOwner != idProject)) {  // Recipient of the funds from a different owner
 
             cumulatedReceived += amount;
             if (accepted || canceled) {
@@ -92,7 +92,7 @@ contract LPPMilestone {
 
             if (returnFunds > 0) {  // Sends exceding money back
                 cumulatedReceived -= returnFunds;
-                liquidPledging.cancelNote(idProject, noteTo, returnFunds);
+                liquidPledging.cancelNote(noteTo, returnFunds);
             }
         }
     }
@@ -115,7 +115,7 @@ contract LPPMilestone {
     function withdraw(uint64 idNote, uint amount) onlyRecipient {
         require(!canceled);
         require(accepted);
-        liquidpledging.withdraw(idNote, amount);
+        liquidPledging.withdraw(idNote, amount);
         collect();
     }
 
