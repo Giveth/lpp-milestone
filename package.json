@@ -29,5 +29,7 @@
     "ethconnector": "0.0.25",
     "liquidpledging": "0.0.7"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "solcpiler": "0.0.4"
+  }
 }

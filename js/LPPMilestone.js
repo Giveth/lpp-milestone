@@ -4,6 +4,21 @@ const generateClass = require('eth-contract-class').default;
 
 const LPPMilestone = generateClass(LPPMilestoneAbi, LPPMilestoneByteCode);
 
+const translateState = (state) => {
+  switch (state) {
+    case '0':
+      return 'InProgress';
+    case '1':
+      return 'NeedsReview';
+    case '2':
+      return 'Completed';
+    case '3':
+      return 'Canceled';
+    default:
+      return 'Unknown';
+  }
+};
+
 LPPMilestone.prototype.getState = function () {
   return Promise.all([
     this.liquidPledging(),
@@ -14,8 +29,7 @@ LPPMilestone.prototype.getState = function () {
     this.recipient(),
     this.newReviewer(),
     this.newRecipient(),
-    this.accepted(),
-    this.canceled(),
+    this.state(),
   ])
   .then(results => ({
     liquidPledging: results[0],
@@ -26,8 +40,7 @@ LPPMilestone.prototype.getState = function () {
     recipeint: results[5],
     newReviewer: results[6],
     newRecipient: results[7],
-    accepted: results[8],
-    canceled: results[9],
+    state: translateState(results[8]),
   }));
 };
 

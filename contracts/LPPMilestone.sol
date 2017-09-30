@@ -15,10 +15,13 @@ contract LPPMilestone {
     address public recipient;
     address public newReviewer;
     address public newRecipient;
-    bool public accepted;
-    bool public canceled;
+    MilestoneState public state;
+
+    enum MilestoneState { InProgress, NeedsReview, Completed, Canceled }
 
     uint public cumulatedReceived;
+
+    event StateChanged(address indexed liquidPledging, MilestoneState state);
 
     function LPPMilestone(LiquidPledging _liquidPledging, string name, uint parentProject, address _recipient, uint _maxAmount, address _reviewer) {
         liquidPledging = _liquidPledging;
@@ -67,7 +70,7 @@ contract LPPMilestone {
             || (   (context == TO_OWNER)
                 && (fromProposedProject != idProject)))
         {
-            if (accepted || canceled) return 0;
+            if (state != MilestoneState.InProgress) return 0;
         }
         return amount;
     }
@@ -82,7 +85,7 @@ contract LPPMilestone {
         if ((context == TO_OWNER)&&(oldOwner != idProject)) {  // Recipient of the funds from a different owner
 
             cumulatedReceived += amount;
-            if (accepted || canceled) {
+            if (state != MilestoneState.InProgress) {
                 returnFunds = amount;
             } else if (cumulatedReceived > maxAmount) {
                 returnFunds = cumulatedReceived - maxAmount;
@@ -97,31 +100,41 @@ contract LPPMilestone {
         }
     }
 
+    function readyForReview() onlyRecipient {
+        require(state == MilestoneState.InProgress);
+        state = MilestoneState.NeedsReview;
+        StateChanged(address(liquidPledging), state);
+    }
+
     function acceptMilestone() onlyReviewer {
-        require(!canceled);
-        require(!accepted);
-        accepted = true;
+        require(state == MilestoneState.NeedsReview);
+        state = MilestoneState.Completed;
+        StateChanged(address(liquidPledging), state);
+    }
+
+    function rejectMilestone() onlyReviewer {
+        require(state == MilestoneState.NeedsReview);
+        state = MilestoneState.InProgress;
+        StateChanged(address(liquidPledging), state);
     }
 
     function cancelMilestone() onlyReviewer {
-        require(!canceled);
-        require(!accepted);
+        require(state == MilestoneState.InProgress || state == MilestoneState.NeedsReview);
 
         liquidPledging.cancelProject(idProject);
 
-        canceled = true;
+        state = MilestoneState.Canceled;
+        StateChanged(address(liquidPledging), state);
     }
 
     function withdraw(uint64 idNote, uint amount) onlyRecipient {
-        require(!canceled);
-        require(accepted);
+        require(state == MilestoneState.Completed);
         liquidPledging.withdraw(idNote, amount);
         collect();
     }
 
     function mWithdraw(uint[] notesAmounts) onlyRecipient {
-        require(!canceled);
-        require(accepted);
+        require(state == MilestoneState.Completed);
         liquidPledging.mWithdraw(notesAmounts);
         collect();
     }
