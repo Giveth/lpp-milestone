@@ -1,0 +1,34 @@
+{
+  "contract_name": "Vault",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_ref",
+          "type": "bytes32"
+        },
+        {
+          "name": "_dest",
+          "type": "address"
+        },
+        {
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "authorizePayment",
+      "outputs": [],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "payable": true,
+      "type": "fallback"
+    }
+  ],
+  "unlinked_binary": "0x",
+  "networks": {},
+  "schema_version": "0.0.5",
+  "updated_at": 1507145200320
+}

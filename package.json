@@ -25,8 +25,8 @@
   "homepage": "https://github.com/Giveth/lpp-milestone#readme",
   "dependencies": {
     "chai": "^4.1.2",
-    "eth-contract-class": "0.0.3",
-    "liquidpledging": "0.0.7"
+    "eth-contract-class": "0.0.4",
+    "liquidpledging": "0.0.8"
   },
   "devDependencies": {
     "lerna": "^2.2.0",

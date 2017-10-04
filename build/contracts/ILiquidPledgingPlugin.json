@@ -1,0 +1,72 @@
+{
+  "contract_name": "ILiquidPledgingPlugin",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "noteManager",
+          "type": "uint64"
+        },
+        {
+          "name": "noteFrom",
+          "type": "uint64"
+        },
+        {
+          "name": "noteTo",
+          "type": "uint64"
+        },
+        {
+          "name": "context",
+          "type": "uint64"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "afterTransfer",
+      "outputs": [],
+      "payable": false,
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "noteManager",
+          "type": "uint64"
+        },
+        {
+          "name": "noteFrom",
+          "type": "uint64"
+        },
+        {
+          "name": "noteTo",
+          "type": "uint64"
+        },
+        {
+          "name": "context",
+          "type": "uint64"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "beforeTransfer",
+      "outputs": [
+        {
+          "name": "maxAllowed",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "type": "function"
+    }
+  ],
+  "unlinked_binary": "0x",
+  "networks": {},
+  "schema_version": "0.0.5",
+  "updated_at": 1507145200319
+}

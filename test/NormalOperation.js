@@ -4,6 +4,7 @@ const TestRPC = require('ethereumjs-testrpc');
 const Web3 = require('web3');
 const chai = require('chai');
 const liquidpledging = require('liquidpledging');
+const assertFail = require('./helpers/assertFail');
 
 const { utils } = Web3;
 
@@ -67,11 +68,13 @@ describe('LiquidPledging test', () => {
     recipient = accounts[4];
     reviewer = accounts[5];
   });
+
   it('Should deploy LiquidPledgin contract', async () => {
     vault = await Vault.new(web3);
     liquidPledging = await LiquidPledging.new(web3, vault.$address, { $gas: 5800000 });
     await vault.setLiquidPledging(liquidPledging.$address);
   }).timeout(6000);
+
   it('Should create a donor', async () => {
     await liquidPledging.addGiver('Donor1', 'URLDonor1', 86400, 0, { from: donor1 });
     const nManagers = await liquidPledging.numberOfPledgeAdmins();
@@ -83,12 +86,14 @@ describe('LiquidPledging test', () => {
     assert.equal(res[3], 'URLDonor1');
     assert.equal(res[4], 86400);
   }).timeout(6000);
+
   it('Should make a donation', async () => {
     await liquidPledging.donate(1, 1, { from: donor1, value: utils.toWei(1) });
     const nPledges = await liquidPledging.numberOfPledges();
     assert.equal(nPledges, 1);
     await liquidPledging.getPledge(1);
   }).timeout(6000);
+
   it('Should create a delegate', async () => {
     await liquidPledging.addDelegate('Delegate1', 'URLDelegate1', 0, 0, { from: delegate1 });
     const nAdmins = await liquidPledging.numberOfPledgeAdmins();
@@ -99,6 +104,7 @@ describe('LiquidPledging test', () => {
     assert.equal(res[2], 'Delegate1');
     assert.equal(res[3], 'URLDelegate1');
   }).timeout(6000);
+
   it('Donor should delegate on the delegate', async () => {
     await liquidPledging.transfer(1, 1, utils.toWei(0.5), 2, { from: donor1 });
     const nPledges = await liquidPledging.numberOfPledges();
@@ -114,19 +120,90 @@ describe('LiquidPledging test', () => {
     assert.equal(d[1], delegate1);
     assert.equal(d[2], 'Delegate1');
   }).timeout(6000);
+
   it('Should deploy the plugin', async () => {
-    campaign = await LPPMilestone.new(web3, liquidPledging.$address, 'Campaign1', 'URLCampaign1', 0, recipient, utils.toWei(1), reviewer, { from: adminProject1 });
+    milestone = await LPPMilestone.new(web3, liquidPledging.$address, 'Milestone 1', 'URLMilestone1', 0, recipient, utils.toWei(1), reviewer, { from: adminProject1 });
     const nAdmins = await liquidPledging.numberOfPledgeAdmins();
     assert.equal(nAdmins, 3);
     const res = await liquidPledging.getPledgeAdmin(3);
     assert.equal(res[0], 2); // Project type
-    assert.equal(res[1], campaign.$address);
-    assert.equal(res[2], 'Campaign1');
-    assert.equal(res[3], 'URLCampaign1');
+    assert.equal(res[1], milestone.$address);
+    assert.equal(res[2], 'Milestone 1');
+    assert.equal(res[3], 'URLMilestone1');
     assert.equal(res[4], 0);
     assert.equal(res[5], 0);
     assert.equal(res[6], false);
-    const idCampaign = await campaign.idCampaign();
+    const idCampaign = await milestone.idCampaign();
     assert.equal(idCampaign, 3);
+  }).timeout(6000);
+
+  it('Should make a donation to milestone', async () => {
+    await liquidPledging.donate(1, 3, { from: donor1, value: '1000' });
+    const nPledges = await liquidPledging.numberOfPledges();
+    assert.equal(nPledges, 3);
+
+    const res = await liquidPledging.getPledge(3);
+    assert.equal(res.amount, '1000');
+    assert.equal(res.owner, 3);
+    assert.equal(res.nDelegates, 0);
+    assert.equal(res.intendedCampaign, 0);
+    assert.equal(res.commitTime, 0);
+    assert.equal(res.oldPledge, 1);
+    assert.equal(res.paymentState, 0);
+  }).timeout(6000);
+
+  it('Should not be able to withdraw InProgress milestone', async () => {
+    await assertFail(async () => {
+      await milestone.withdraw(3, '1000', { from: adminProject1 });
+    });
+  }).timeout(6000);
+
+  it('Should not be able to reject InProgress milestone', async () => {
+    await assertFail(async () => {
+      await milstone.rejectMilestone({ from: reviewer });
+    });
+  }).timeout(6000);
+
+  it('Should not be able to accept InProgress milestone', async () => {
+    await assertFail(async () => {
+      await milestone.acceptMilestone({ from: reviewer });
+    });
+  }).timeout(6000);
+
+  it('Only owner should be able to mark milestone readyForReview milestone', async () => {
+    await assertFail(async () => {
+      await milestone.readyForReview({ from: adminProject1 });
+    });
+  }).timeout(6000);
+
+  it('Should mark milestone readyForReview', async () => {
+      await milestone.readyForReview({ from: recipient });
+      assert.equal(await milestone.state(), '1');
+  }).timeout(6000);
+
+  it('Should mark milestone Completed', async () => {
+    await milestone.acceptMilestone({ from: reviewer});
+    assert.equal(await milestone.state(), '2');
+  }).timeout(6000);
+
+  it('Should withdraw pledge for completed milestone', async () => {
+    await milestone.withdraw(3, '1000', { from: recipient});
+
+    const st = await liquidPledging.getState();
+
+    assert.equal(st.pledges.length, 5);
+
+    const oldPledge = st.pledges[3];
+    const payingPledge = st.pledges[4];
+
+    assert.equal(oldPledge.amount, '0');
+    assert.equal(oldPledge.paymentState, 'Pledged');
+
+    assert.equal(payingPledge.amount, '1000');
+    assert.equal(payingPledge.owner, 3);
+    assert.equal(payingPledge.delegates.length, 0);
+    assert.equal(payingPledge.intendedCampaign, 0);
+    assert.equal(payingPledge.oldPledge, 1);
+    assert.equal(payingPledge.paymentState, 'Paying');
   }).timeout(6000);
 });

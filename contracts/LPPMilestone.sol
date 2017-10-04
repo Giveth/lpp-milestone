@@ -66,11 +66,12 @@ contract LPPMilestone {
     function beforeTransfer(uint64 pledgeManager, uint64 pledgeFrom, uint64 pledgeTo, uint64 context, uint amount) returns (uint maxAllowed) {
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedCampaign , , , ) = liquidPledging.getPledge(pledgeFrom);
+        var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
         // If it is proposed or comes from somewhere else of a proposed campaign, do not allow.
         // only allow from the proposed campaign to the campaign in order normalize it.
         if (   (context == TO_INTENDEDCAMPAIGN)
             || (   (context == TO_OWNER)
-                && (fromIntendedCampaign != idCampaign)))
+                && (fromIntendedCampaign != idCampaign) && (toPaymentState == LiquidPledgingBase.PaymentState.Pledged)))
         {
             if (state != MilestoneState.InProgress) return 0;
         }
@@ -122,7 +123,7 @@ contract LPPMilestone {
     function cancelMilestone() onlyReviewer {
         require(state == MilestoneState.InProgress || state == MilestoneState.NeedsReview);
 
-        liquidPledging.cancelCampaign(idProject);
+        liquidPledging.cancelCampaign(idCampaign);
 
         state = MilestoneState.Canceled;
         StateChanged(address(liquidPledging), state);
