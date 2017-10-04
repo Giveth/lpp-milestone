@@ -1,5 +1,5 @@
 const LPPMilestoneAbi = require("../build/LPPMilestone.sol").LPPMilestoneAbi;
 const LPPMilestoneByteCode = require("../build/LPPMilestone.sol").LPPMilestoneByteCode;
-const runethtx = require("runethtx");
+const generateClass = require('eth-contract-class').default;
 
-module.exports = runethtx.generateClass(LPPMilestoneAbi, LPPMilestoneByteCode);
+module.exports = generateClass(LPPMilestoneAbi, LPPMilestoneByteCode);
