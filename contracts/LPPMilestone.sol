@@ -17,10 +17,13 @@ contract LPPMilestone {
     uint public maxAmount;
     address public newReviewer;
     address public newRecipient;
-    bool public accepted;
-    bool public canceled;
+    MilestoneState public state;
+
+    enum MilestoneState { InProgress, NeedsReview, Completed, Canceled }
 
     uint public cumulatedReceived;
+
+    event StateChanged(address indexed liquidPledging, MilestoneState state);
 
     function LPPMilestone(LiquidPledging _liquidPledging, string name, string url, uint64 parentCampaign, address _recipient, uint _maxAmount, address _reviewer) {
         liquidPledging = _liquidPledging;
@@ -63,13 +66,14 @@ contract LPPMilestone {
     function beforeTransfer(uint64 pledgeManager, uint64 pledgeFrom, uint64 pledgeTo, uint64 context, uint amount) returns (uint maxAllowed) {
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedCampaign , , , ) = liquidPledging.getPledge(pledgeFrom);
+        var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
         // If it is proposed or comes from somewhere else of a proposed campaign, do not allow.
         // only allow from the proposed campaign to the campaign in order normalize it.
         if (   (context == TO_INTENDEDCAMPAIGN)
             || (   (context == TO_OWNER)
-                && (fromIntendedCampaign != idCampaign)))
+                && (fromIntendedCampaign != idCampaign) && (toPaymentState == LiquidPledgingBase.PaymentState.Pledged)))
         {
-            if (accepted || canceled) return 0;
+            if (state != MilestoneState.InProgress) return 0;
         }
         return amount;
     }
@@ -83,7 +87,7 @@ contract LPPMilestone {
         if ((context == TO_OWNER)&&(oldOwner != idCampaign)) {  // Recipient of the funds from a different owner
 
             cumulatedReceived += amount;
-            if (accepted || canceled) {
+            if (state != MilestoneState.InProgress) {
                 returnFunds = amount;
             } else if (cumulatedReceived > maxAmount) {
                 returnFunds = cumulatedReceived - maxAmount;
@@ -98,31 +102,41 @@ contract LPPMilestone {
         }
     }
 
+    function readyForReview() onlyRecipient {
+        require(state == MilestoneState.InProgress);
+        state = MilestoneState.NeedsReview;
+        StateChanged(address(liquidPledging), state);
+    }
+
     function acceptMilestone() onlyReviewer {
-        require(!canceled);
-        require(!accepted);
-        accepted = true;
+        require(state == MilestoneState.NeedsReview);
+        state = MilestoneState.Completed;
+        StateChanged(address(liquidPledging), state);
+    }
+
+    function rejectMilestone() onlyReviewer {
+        require(state == MilestoneState.NeedsReview);
+        state = MilestoneState.InProgress;
+        StateChanged(address(liquidPledging), state);
     }
 
     function cancelMilestone() onlyReviewer {
-        require(!canceled);
-        require(!accepted);
-
-        canceled = true;
+        require(state == MilestoneState.InProgress || state == MilestoneState.NeedsReview);
 
         liquidPledging.cancelCampaign(idCampaign);
+
+        state = MilestoneState.Canceled;
+        StateChanged(address(liquidPledging), state);
     }
 
     function withdraw(uint64 idPledge, uint amount) onlyRecipient {
-        require(!canceled);
-        require(accepted);
+        require(state == MilestoneState.Completed);
         liquidPledging.withdraw(idPledge, amount);
         collect();
     }
 
     function mWithdraw(uint[] pledgesAmounts) onlyRecipient {
-        require(!canceled);
-        require(accepted);
+        require(state == MilestoneState.Completed);
         liquidPledging.mWithdraw(pledgesAmounts);
         collect();
     }
