@@ -4,6 +4,7 @@ const TestRPC = require('ethereumjs-testrpc');
 const Web3 = require('web3');
 const chai = require('chai');
 const liquidpledging = require('liquidpledging');
+const assertFail = require('./helpers/assertFail');
 
 const { utils } = Web3;
 
@@ -128,5 +129,52 @@ describe('LiquidPledging test', () => {
     assert.equal(res[6], false);
     const idProject = await project.idProject();
     assert.equal(idProject, 3);
+  }).timeout(6000);
+
+  it('Should make a donation to milestone', async () => {
+    await liquidPledging.donate(1, 3, { from: donor1, value: '1000' });
+    const nPledges = await liquidPledging.numberOfPledges();
+    assert.equal(nPledges, 3);
+
+    const res = await liquidPledging.getPledge(3);
+    assert.equal(res.amount, '1000');
+    assert.equal(res.owner, 3);
+    assert.equal(res.nDelegates, 0);
+    assert.equal(res.intendedProject, 0);
+    assert.equal(res.commitTime, 0);
+    assert.equal(res.oldPledge, 1);
+    assert.equal(res.paymentState, 0);
+  }).timeout(6000);
+
+  it('Should not be able to withdraw non-accepted milestone', async () => {
+    await assertFail(async () => {
+      await milestone.withdraw(3, '1000', { from: adminProject1 });
+    });
+  }).timeout(6000);
+
+  it('Should mark milestone Completed', async () => {
+    await milestone.acceptMilestone({ from: reviewer});
+    assert.equal(await milestone.state(), '2');
+  }).timeout(6000);
+
+  it('Should withdraw pledge for completed milestone', async () => {
+    await milestone.withdraw(3, '1000', { from: recipient});
+
+    const st = await liquidPledging.getState();
+
+    assert.equal(st.pledges.length, 5);
+
+    const oldPledge = st.pledges[3];
+    const payingPledge = st.pledges[4];
+
+    assert.equal(oldPledge.amount, '0');
+    assert.equal(oldPledge.paymentState, 'Pledged');
+
+    assert.equal(payingPledge.amount, '1000');
+    assert.equal(payingPledge.owner, 3);
+    assert.equal(payingPledge.delegates.length, 0);
+    assert.equal(payingPledge.intendedProject, 0);
+    assert.equal(payingPledge.oldPledge, 1);
+    assert.equal(payingPledge.paymentState, 'Paying');
   }).timeout(6000);
 });

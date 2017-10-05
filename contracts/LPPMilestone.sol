@@ -22,6 +22,8 @@ contract LPPMilestone {
 
     uint public cumulatedReceived;
 
+    event MilestoneAccepted(address indexed liquidPledging);
+
     function LPPMilestone(LiquidPledging _liquidPledging, string name, string url, uint64 parentProject, address _recipient, uint _maxAmount, address _reviewer) {
         liquidPledging = _liquidPledging;
         idProject = liquidPledging.addProject(name, url, address(this), parentProject, uint64(0), ILiquidPledgingPlugin(this));
@@ -63,11 +65,12 @@ contract LPPMilestone {
     function beforeTransfer(uint64 pledgeManager, uint64 pledgeFrom, uint64 pledgeTo, uint64 context, uint amount) returns (uint maxAllowed) {
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedProject , , , ) = liquidPledging.getPledge(pledgeFrom);
+        var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
         // If it is proposed or comes from somewhere else of a proposed project, do not allow.
         // only allow from the proposed project to the project in order normalize it.
         if (   (context == TO_INTENDEDPROJECT)
             || (   (context == TO_OWNER)
-                && (fromIntendedProject != idProject)))
+                && (fromIntendedProject != idProject) && (toPaymentState == LiquidPledgingBase.PaymentState.Pledged)))
         {
             if (accepted || canceled) return 0;
         }
@@ -102,6 +105,7 @@ contract LPPMilestone {
         require(!canceled);
         require(!accepted);
         accepted = true;
+        MilestoneAccepted(address(liquidPledging));
     }
 
     function cancelMilestone() onlyReviewer {
