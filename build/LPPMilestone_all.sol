@@ -197,7 +197,6 @@ contract LiquidPledgingBase {
         if (parentProject != 0) {
             PledgeAdmin storage pa = findAdmin(parentProject);
             require(pa.adminType == PledgeAdminType.Project);
-            require(pa.addr == msg.sender);
             require(getProjectLevel(pa) < MAX_SUBPROJECT_LEVEL);
         }
 
@@ -496,6 +495,7 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
             } else if (receiver.adminType == PledgeAdminType.Project) {
                 transferOwnershipToProject(idPledge, amount, idReceiver);
             } else if (receiver.adminType == PledgeAdminType.Delegate) {
+                idPledge = undelegate(idPledge, amount, n.delegationChain.length);
                 appendDelegate(idPledge, amount, idReceiver);
             } else {
                 assert(false);
@@ -521,14 +521,14 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
 
                 // If the receiver is not in the delegate list
                 if (receiverDIdx == NOTFOUND) {
-                    undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
+                    idPledge = undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
                     appendDelegate(idPledge, amount, idReceiver);
 
                 // If the receiver is already part of the delegate chain and is
                 // after the sender, then all of the other delegates after the sender are
                 // removed and the receiver is appended at the end of the delegation chain
                 } else if (receiverDIdx > senderDIdx) {
-                    undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
+                    idPledge = undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
                     appendDelegate(idPledge, amount, idReceiver);
 
                 // If the receiver is already part of the delegate chain and is
@@ -545,7 +545,7 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
             // If the delegate wants to support a project, they undelegate all
             // the delegates after them in the chain and choose a project
             if (receiver.adminType == PledgeAdminType.Project) {
-                undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
+                idPledge = undelegate(idPledge, amount, n.delegationChain.length - senderDIdx - 1);
                 proposeAssignProject(idPledge, amount, idReceiver);
                 return;
             }
@@ -768,7 +768,7 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
     }
 
     /// @param q Number of undelegations
-    function undelegate(uint64 idPledge, uint amount, uint q) internal {
+    function undelegate(uint64 idPledge, uint amount, uint q) internal returns (uint64){
         Pledge storage n = findPledge(idPledge);
         uint64[] memory newDelegationChain = new uint64[](n.delegationChain.length - q);
         for (uint i=0; i<n.delegationChain.length - q; i++) {
@@ -782,6 +782,8 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
                 n.oldPledge,
                 PaymentState.Pledged);
         doTransfer(idPledge, toPledge, amount);
+
+        return toPledge;
     }
 
 
@@ -978,7 +980,28 @@ contract LPPMilestone {
         newReviewer = 0;
     }
 
-    function beforeTransfer(uint64 pledgeManager, uint64 pledgeFrom, uint64 pledgeTo, uint64 context, uint amount) returns (uint maxAllowed) {
+    /// @dev Plugins are used (much like web hooks) to initiate an action
+    ///  upon any donation, delegation, or transfer; this is an optional feature
+    ///  and allows for extreme customization of the contract
+    /// @dev Context The situation that is triggering the plugin:
+    ///  0 -> Plugin for the owner transferring pledge to another party
+    ///  1 -> Plugin for the first delegate transferring pledge to another party
+    ///  2 -> Plugin for the second delegate transferring pledge to another party
+    ///  ...
+    ///  255 -> Plugin for the intendedCampaign transferring pledge to another party
+    ///
+    ///  256 -> Plugin for the owner receiving pledge to another party
+    ///  257 -> Plugin for the first delegate receiving pledge to another party
+    ///  258 -> Plugin for the second delegate receiving pledge to another party
+    ///  ...
+    ///  511 -> Plugin for the intendedCampaign receiving pledge to another party
+    function beforeTransfer(
+        uint64 pledgeManager,
+        uint64 pledgeFrom,
+        uint64 pledgeTo,
+        uint64 context,
+        uint amount
+        ) returns (uint maxAllowed){
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedProject , , , ) = liquidPledging.getPledge(pledgeFrom);
         var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
@@ -992,8 +1015,17 @@ contract LPPMilestone {
         }
         return amount;
     }
-
-    function afterTransfer(uint64 pledgeManager, uint64 pledgeFrom, uint64 pledgeTo, uint64 context, uint amount) {
+    /// @dev Plugins are used (much like web hooks) to initiate an action
+    ///  upon any donation, delegation, or transfer; this is an optional feature
+    ///  and allows for extreme customization of the contract
+    /// @dev Context The situation that is triggering the plugin, see note for
+    ///  `beforeTransfer()`
+    function afterTransfer(
+        uint64 pledgeManager,
+        uint64 pledgeFrom,
+        uint64 pledgeTo,
+        uint64 context,
+        uint amount){
         uint returnFunds;
         require(msg.sender == address(liquidPledging));
 
@@ -1050,4 +1082,6 @@ contract LPPMilestone {
     function collect() onlyRecipient {
         if (this.balance>0) recipient.transfer(this.balance);
     }
+
+    function () payable {}
 }

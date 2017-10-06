@@ -100,7 +100,7 @@ contract LPPMilestone {
     /// @dev Plugins are used (much like web hooks) to initiate an action
     ///  upon any donation, delegation, or transfer; this is an optional feature
     ///  and allows for extreme customization of the contract
-    /// @dev Context The situation that is triggering the plugin, see note for 
+    /// @dev Context The situation that is triggering the plugin, see note for
     ///  `beforeTransfer()`
     function afterTransfer(
         uint64 pledgeManager,
@@ -164,4 +164,6 @@ contract LPPMilestone {
     function collect() onlyRecipient {
         if (this.balance>0) recipient.transfer(this.balance);
     }
+
+    function () payable {}
 }
