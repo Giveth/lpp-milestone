@@ -26,10 +26,12 @@
   "devDependencies": {
     "lerna": "^2.2.0",
     "ethereumjs-testrpc": "git://github.com/perissology/testrpc.git#81216dbc",
+	"solcpiler": "0.0.5",
     "web3": "git://github.com/perissology/web3.js.git#all_fixes"
   },
   "dependencies": {
     "liquidpledging": "0.0.8",
-    "chai": "^4.1.2"
+    "chai": "^4.1.2",
+	"eth-contract-class": "0.0.4"
   }
 }
