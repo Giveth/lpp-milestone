@@ -47,7 +47,7 @@ describe('LiquidPledging test', () => {
   let donor1;
   let delegate1;
   let adminProject1;
-  let campaign;
+  let project;
   let recipient;
   let reviewer;
   before(async () => {
@@ -115,18 +115,18 @@ describe('LiquidPledging test', () => {
     assert.equal(d[2], 'Delegate1');
   }).timeout(6000);
   it('Should deploy the plugin', async () => {
-    campaign = await LPPMilestone.new(web3, liquidPledging.$address, 'Campaign1', 'URLCampaign1', 0, recipient, utils.toWei(1), reviewer, { from: adminProject1 });
+    project = await LPPMilestone.new(web3, liquidPledging.$address, 'Project1', 'URLProject1', 0, recipient, utils.toWei(1), reviewer, { from: adminProject1 });
     const nAdmins = await liquidPledging.numberOfPledgeAdmins();
     assert.equal(nAdmins, 3);
     const res = await liquidPledging.getPledgeAdmin(3);
     assert.equal(res[0], 2); // Project type
-    assert.equal(res[1], campaign.$address);
-    assert.equal(res[2], 'Campaign1');
-    assert.equal(res[3], 'URLCampaign1');
+    assert.equal(res[1], project.$address);
+    assert.equal(res[2], 'Project1');
+    assert.equal(res[3], 'URLProject1');
     assert.equal(res[4], 0);
     assert.equal(res[5], 0);
     assert.equal(res[6], false);
-    const idCampaign = await campaign.idCampaign();
-    assert.equal(idCampaign, 3);
+    const idProject = await project.idProject();
+    assert.equal(idProject, 3);
   }).timeout(6000);
 });
