@@ -3,8 +3,15 @@
   "version": "0.0.1",
   "description": "Simple milestone plugin for liquid plading.",
   "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
   "scripts": {
-    "test": "solcpiler; mocha --harmony"
+    "test": "npm run sol-compile; mocha --harmony",
+    "sol-compile": "solcpiler",
+    "js-compile": "babel -d lib/ js/",
+    "compile": "npm run sol-compile; npm run js-compile",
+    "prepublish": "npm run js-compile"
   },
   "repository": {
     "type": "git",
@@ -24,6 +31,9 @@
   },
   "homepage": "https://github.com/Giveth/lpp-milestone#readme",
   "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-eslint": "^7.2.3",
+    "babel-preset-env": "^1.6.0",
     "lerna": "^2.2.0",
     "ethereumjs-testrpc": "git://github.com/perissology/testrpc.git#81216dbc",
     "solcpiler": "0.0.5",
