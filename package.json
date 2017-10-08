@@ -7,7 +7,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "npm run sol-compile; mocha --harmony",
+    "test": "npm run compile; mocha --harmony",
     "sol-compile": "solcpiler",
     "js-compile": "babel -d lib/ js/",
     "compile": "npm run sol-compile; npm run js-compile",
