@@ -1,4 +1,4 @@
-# lpp-milestone
+![LPP Milestone](readme-header.png)
 
 > Ethereum contract for liquid pledging milestone plugin
 
