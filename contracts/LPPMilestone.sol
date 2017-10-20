@@ -70,13 +70,13 @@ contract LPPMilestone {
     ///  1 -> Plugin for the first delegate transferring pledge to another party
     ///  2 -> Plugin for the second delegate transferring pledge to another party
     ///  ...
-    ///  255 -> Plugin for the intendedCampaign transferring pledge to another party
+    ///  255 -> Plugin for the intendedProject transferring pledge to another party
     ///
-    ///  256 -> Plugin for the owner receiving pledge to another party
-    ///  257 -> Plugin for the first delegate receiving pledge to another party
-    ///  258 -> Plugin for the second delegate receiving pledge to another party
+    ///  256 -> Plugin for the owner receiving pledge from another party
+    ///  257 -> Plugin for the first delegate receiving pledge from another party
+    ///  258 -> Plugin for the second delegate receiving pledge from another party
     ///  ...
-    ///  511 -> Plugin for the intendedCampaign receiving pledge to another party
+    ///  511 -> Plugin for the intendedProject receiving pledge from another party
     function beforeTransfer(
         uint64 pledgeManager,
         uint64 pledgeFrom,
