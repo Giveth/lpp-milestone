@@ -18,7 +18,6 @@ contract LPPMilestone {
     address public newReviewer;
     address public newRecipient;
     bool public accepted;
-    bool public canceled;
 
     uint public cumulatedReceived;
 
@@ -93,7 +92,7 @@ contract LPPMilestone {
             || (   (context == TO_OWNER)
                 && (fromIntendedProject != idProject) && (toPaymentState == LiquidPledgingBase.PaymentState.Pledged)))
         {
-            if (accepted || canceled) return 0;
+            if (accepted || isCanceled()) return 0;
         }
         return amount;
     }
@@ -116,7 +115,7 @@ contract LPPMilestone {
         if ((context == TO_OWNER)&&(oldOwner != idProject)) {  // Recipient of the funds from a different owner
 
             cumulatedReceived += amount;
-            if (accepted || canceled) {
+            if (accepted || isCanceled()) {
                 returnFunds = amount;
             } else if (cumulatedReceived > maxAmount) {
                 returnFunds = cumulatedReceived - maxAmount;
@@ -131,31 +130,33 @@ contract LPPMilestone {
         }
     }
 
+    function isCanceled() constant returns (bool) {
+        return liquidPledging.isProjectCanceled(idProject);
+    }
+
     function acceptMilestone() onlyReviewer {
-        require(!canceled);
+        require(!isCanceled());
         require(!accepted);
         accepted = true;
         MilestoneAccepted(address(liquidPledging));
     }
 
     function cancelMilestone() onlyReviewer {
-        require(!canceled);
+        require(!isCanceled());
         require(!accepted);
-
-        canceled = true;
 
         liquidPledging.cancelProject(idProject);
     }
 
     function withdraw(uint64 idPledge, uint amount) onlyRecipient {
-        require(!canceled);
+        require(!isCanceled());
         require(accepted);
         liquidPledging.withdraw(idPledge, amount);
         collect();
     }
 
     function mWithdraw(uint[] pledgesAmounts) onlyRecipient {
-        require(!canceled);
+        require(!isCanceled());
         require(accepted);
         liquidPledging.mWithdraw(pledgesAmounts);
         collect();
