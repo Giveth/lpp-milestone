@@ -36,8 +36,8 @@
     "babel-preset-env": "^1.6.0",
     "lerna": "^2.2.0",
     "ethereumjs-testrpc": "git://github.com/perissology/testrpc.git#81216dbc",
-    "solcpiler": "0.0.5",
-    "web3": "git://github.com/perissology/web3.js.git#all_fixes"
+    "solcpiler": "git://github.com/jbaylina/solcpiler.git#50cd2a675a713c454cf6b64d8d0cf640114b696b",
+    "web3": "1.0.0-beta.24"
   },
   "dependencies": {
     "liquidpledging": "0.0.9",

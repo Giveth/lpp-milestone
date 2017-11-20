@@ -915,7 +915,7 @@ function donate(uint64 idGiver, uint64 idReceiver) payable {
 
 }
 
-//File: ./contracts/LPPMilestone.sol
+//File: contracts/LPPMilestone.sol
 pragma solidity ^0.4.13;
 
 
@@ -1123,4 +1123,25 @@ contract LPPMilestone {
     }
 
     function () payable initialized {}
+}
+
+//File: ./contracts/LPPMilestoneFactory.sol
+pragma solidity ^0.4.13;
+
+
+
+contract LPPMilestoneFactory {
+    function deploy(
+        LiquidPledging _liquidPledging,
+        string name,
+        string url,
+        uint64 parentProject,
+        address _recipient,
+        uint _maxAmount,
+        address _milestoneReviewer,
+        address _campaignReviewer
+  ) {
+        LPPMilestone milestone = new LPPMilestone();
+        milestone.init(_liquidPledging, name, url, parentProject, _recipient, _maxAmount, _milestoneReviewer, _campaignReviewer);
+    }
 }

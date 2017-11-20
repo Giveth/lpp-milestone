@@ -8,8 +8,11 @@ const assertFail = require('./helpers/assertFail');
 
 const { utils } = Web3;
 
-const LiquidPledging = liquidpledging.LiquidPledging(true);
-const LPPMilestone = require('../index.js');
+const LiquidPledging = liquidpledging.LiquidPledging;
+const LiquidPledgingState = liquidpledging.LiquidPledgingState;
+const LPPMilestone = require('../lib/LPPMilestone');
+const LPPMilestoneFactory = require('../lib/LPPMilestoneFactory');
+const LPPMilestoneRuntimeBytecode = require('../build/LPPMilestoneFactory.sol').LPPMilestoneRuntimeByteCode;
 
 const Vault = liquidpledging.Vault;
 const assert = chai.assert;
@@ -46,13 +49,16 @@ describe('LiquidPledging test', function() {
   let web3;
   let accounts;
   let liquidPledging;
+  let liquidPledgingState;
   let vault;
+  let factory;
   let donor1;
   let delegate1;
   let adminMilestone1;
   let milestone;
   let recipient;
-  let reviewer;
+  let milestoneReviewer;
+  let campaignReviewer;
 
   before(async () => {
     testrpc = TestRPC.server({
@@ -69,7 +75,8 @@ describe('LiquidPledging test', function() {
     delegate1 = accounts[2];
     adminMilestone1 = accounts[3];
     recipient = accounts[4];
-    reviewer = accounts[5];
+    milestoneReviewer = accounts[5];
+    campaignReviewer = accounts[6];
   });
 
   after((done) => {
@@ -81,6 +88,13 @@ describe('LiquidPledging test', function() {
     vault = await Vault.new(web3);
     liquidPledging = await LiquidPledging.new(web3, vault.$address, { $gas: 5800000 });
     await vault.setLiquidPledging(liquidPledging.$address);
+
+    liquidPledgingState = new LiquidPledgingState(liquidPledging);
+
+    const codeHash = web3.utils.keccak256(LPPMilestoneRuntimeBytecode);
+    await liquidPledging.addValidPlugin(codeHash);
+
+    factory = await LPPMilestoneFactory.new(web3);
   });
 
   it('Should create a donor', async () => {
@@ -96,7 +110,7 @@ describe('LiquidPledging test', function() {
   });
 
   it('Should make a donation', async () => {
-    await liquidPledging.donate(1, 1, { from: donor1, value: utils.toWei(1) });
+    await liquidPledging.donate(1, 1, { from: donor1, value: utils.toWei('1') });
     const nPledges = await liquidPledging.numberOfPledges();
     assert.equal(nPledges, 1);
     await liquidPledging.getPledge(1);
@@ -114,13 +128,13 @@ describe('LiquidPledging test', function() {
   });
 
   it('Donor should delegate on the delegate', async () => {
-    await liquidPledging.transfer(1, 1, utils.toWei(0.5), 2, { from: donor1 });
+    await liquidPledging.transfer(1, 1, utils.toWei('0.5'), 2, { from: donor1 });
     const nPledges = await liquidPledging.numberOfPledges();
     assert.equal(nPledges, 2);
     const res1 = await liquidPledging.getPledge(1);
-    assert.equal(res1[0], utils.toWei(0.5));
+    assert.equal(res1[0], utils.toWei('0.5'));
     const res2 = await liquidPledging.getPledge(2);
-    assert.equal(res2[0], utils.toWei(0.5));
+    assert.equal(res2[0], utils.toWei('0.5'));
     assert.equal(res2[1], 1); // One delegate
 
     const d = await liquidPledging.getPledgeDelegate(2, 1);
@@ -130,10 +144,13 @@ describe('LiquidPledging test', function() {
   });
 
   it('Should deploy the plugin', async () => {
-    milestone = await LPPMilestone.new(web3, liquidPledging.$address, 'Milestone1', 'URLMilestone1', 0, recipient, utils.toWei(1), reviewer, { from: adminMilestone1});
+    await factory.deploy(liquidPledging.$address, 'Milestone1', 'URLMilestone1', 0, recipient, utils.toWei('1'), milestoneReviewer, campaignReviewer, { from: adminMilestone1, gas:5000000 });
     const nAdmins = await liquidPledging.numberOfPledgeAdmins();
     assert.equal(nAdmins, 3);
     const res = await liquidPledging.getPledgeAdmin(3);
+
+    milestone = new LPPMilestone(web3, res.plugin);
+
     assert.equal(res[0], 2); // Project type
     assert.equal(res[1], milestone.$address);
     assert.equal(res[2], 'Milestone1');
@@ -167,14 +184,14 @@ describe('LiquidPledging test', function() {
   });
 
   it('Should mark milestone Completed', async () => {
-    await milestone.acceptMilestone({ from: reviewer});
+    await milestone.acceptMilestone({ from: milestoneReviewer});
     assert.equal(await milestone.accepted(), true);
   });
 
   it('Should withdraw pledge for completed milestone', async () => {
     await milestone.withdraw(3, '1000', { from: recipient});
 
-    const st = await liquidPledging.getState();
+    const st = await liquidPledgingState.getState();
 
     assert.equal(st.pledges.length, 5);
 
@@ -196,13 +213,13 @@ describe('LiquidPledging test', function() {
     const startBal = await web3.eth.getBalance(milestone.$address);
     await vault.confirmPayment(0);
 
-    const paidPledge = await liquidPledging.$getPledge(5);
+    const paidPledge = await liquidPledging.getPledge(5);
     const endBal = await web3.eth.getBalance(milestone.$address);
 
     assert.equal(endBal, web3.utils.toBN(startBal).add(web3.utils.toBN('1000')).toString());
 
     assert.equal(paidPledge.amount, '1000');
-    assert.equal(paidPledge.paymentState, 'Paid');
+    assert.equal(paidPledge.paymentState, '2'); // Paid payment state
   });
 
   it('Recipient should be able to collect from contract', async () => {

@@ -1,1 +1,2 @@
-module.exports = require('./lib/LPPMilestone.js');
+exports.LPPMilestone = require('./lib/LPPMilestone.js');
+exports.LPPMilestoneFactory = require('./lib/LPPMilestoneFactory.js');

@@ -1,6 +1,6 @@
 pragma solidity ^0.4.13;
 
-import "../node_modules/liquidpledging/contracts/LiquidPledging.sol";
+import "liquidpledging/contracts/LiquidPledging.sol";
 
 contract LPPMilestone {
     uint constant FROM_OWNER = 0;
@@ -10,25 +10,50 @@ contract LPPMilestone {
 
     LiquidPledging public liquidPledging;
 
-    address public reviewer;
+    address public milestoneReviewer;
+    address public campaignReviewer;
     address public recipient;
 
-    uint64 public idProject;
     uint public maxAmount;
-    address public newReviewer;
+    address public newMilestoneReviewer;
+    address public newCampaignReviewer;
     address public newRecipient;
+    uint64 public idProject;
     bool public accepted;
+    bool public initPending;
 
     uint public cumulatedReceived;
 
     event MilestoneAccepted(address indexed liquidPledging);
 
-    function LPPMilestone(LiquidPledging _liquidPledging, string name, string url, uint64 parentProject, address _recipient, uint _maxAmount, address _reviewer) {
+    function LPPMilestone() {
+        require(msg.sender != tx.origin);
+        initPending = true;
+    }
+
+    function init(
+        LiquidPledging _liquidPledging,
+        string name,
+        string url,
+        uint64 parentProject,
+        address _recipient,
+        uint _maxAmount,
+        address _milestoneReviewer,
+        address _campaignReviewer
+    ) {
+        require(initPending);
         liquidPledging = _liquidPledging;
         idProject = liquidPledging.addProject(name, url, address(this), parentProject, uint64(0), ILiquidPledgingPlugin(this));
         maxAmount = _maxAmount;
         recipient = _recipient;
-        reviewer = _reviewer;
+        milestoneReviewer = _milestoneReviewer;
+        campaignReviewer = _campaignReviewer;
+        initPending = false;
+    }
+
+    modifier initialized() {
+        require(!initPending);
+        _;
     }
 
     modifier onlyRecipient() {
@@ -37,28 +62,40 @@ contract LPPMilestone {
     }
 
     modifier onlyReviewer() {
-        require(msg.sender == reviewer);
+        require(msg.sender == milestoneReviewer || msg.sender == campaignReviewer);
         _;
     }
 
-    function changeRecipient(address _newRecipient) onlyRecipient {
+    function changeRecipient(address _newRecipient) initialized onlyRecipient {
         newRecipient = _newRecipient;
     }
 
-    function changeReviewer(address _newReviewer) onlyReviewer {
-        newReviewer = _newReviewer;
+    function changeMilestoneReviewer(address _newReviewer) initialized {
+        require(msg.sender == milestoneReviewer);
+        newMilestoneReviewer = _newReviewer;
     }
 
-    function acceptNewRecipient() {
+    function changeCampaignReviewer(address _newReviewer) initialized {
+        require(msg.sender == campaignReviewer);
+        newCampaignReviewer = _newReviewer;
+    }
+
+    function acceptNewRecipient() initialized {
         require(newRecipient == msg.sender);
         recipient = newRecipient;
         newRecipient = 0;
     }
 
-    function acceptNewReviewer() {
-        require(newReviewer == msg.sender);
-        reviewer = newReviewer;
-        newReviewer = 0;
+    function acceptNewMilestoneReviewer() initialized {
+        require(newMilestoneReviewer == msg.sender);
+        milestoneReviewer = newMilestoneReviewer;
+        newMilestoneReviewer = 0;
+    }
+
+    function acceptNewCampaignReviewer() initialized {
+        require(newCampaignReviewer == msg.sender);
+        campaignReviewer = newCampaignReviewer;
+        newCampaignReviewer = 0;
     }
 
     /// @dev Plugins are used (much like web hooks) to initiate an action
@@ -82,7 +119,7 @@ contract LPPMilestone {
         uint64 pledgeTo,
         uint64 context,
         uint amount
-        ) returns (uint maxAllowed){
+        ) initialized returns (uint maxAllowed){
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedProject , , , ) = liquidPledging.getPledge(pledgeFrom);
         var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
@@ -106,7 +143,8 @@ contract LPPMilestone {
         uint64 pledgeFrom,
         uint64 pledgeTo,
         uint64 context,
-        uint amount){
+        uint amount
+    ) initialized {
         uint returnFunds;
         require(msg.sender == address(liquidPledging));
 
@@ -130,41 +168,41 @@ contract LPPMilestone {
         }
     }
 
-    function isCanceled() constant returns (bool) {
+    function isCanceled() constant initialized returns (bool) {
         return liquidPledging.isProjectCanceled(idProject);
     }
 
-    function acceptMilestone() onlyReviewer {
+    function acceptMilestone() initialized onlyReviewer {
         require(!isCanceled());
         require(!accepted);
         accepted = true;
         MilestoneAccepted(address(liquidPledging));
     }
 
-    function cancelMilestone() onlyReviewer {
+    function cancelMilestone() initialized onlyReviewer {
         require(!isCanceled());
         require(!accepted);
 
         liquidPledging.cancelProject(idProject);
     }
 
-    function withdraw(uint64 idPledge, uint amount) onlyRecipient {
+    function withdraw(uint64 idPledge, uint amount) initialized onlyRecipient {
         require(!isCanceled());
         require(accepted);
         liquidPledging.withdraw(idPledge, amount);
         collect();
     }
 
-    function mWithdraw(uint[] pledgesAmounts) onlyRecipient {
+    function mWithdraw(uint[] pledgesAmounts) initialized onlyRecipient {
         require(!isCanceled());
         require(accepted);
         liquidPledging.mWithdraw(pledgesAmounts);
         collect();
     }
 
-    function collect() onlyRecipient {
+    function collect() initialized onlyRecipient {
         if (this.balance>0) recipient.transfer(this.balance);
     }
 
-    function () payable {}
+    function () payable initialized {}
 }

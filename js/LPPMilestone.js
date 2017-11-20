@@ -3,6 +3,8 @@ const LPPMilestoneByteCode = require('../build/LPPMilestone.sol').LPPMilestoneBy
 const generateClass = require('eth-contract-class').default;
 
 const LPPMilestone = generateClass(LPPMilestoneAbi, LPPMilestoneByteCode);
+// need to deploy via factory contract
+delete LPPMilestone.new;
 
 LPPMilestone.prototype.getState = function () {
   return Promise.all([
