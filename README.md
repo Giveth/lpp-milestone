@@ -14,7 +14,7 @@ Welcome to the code for the milestone plugin for [liquid pledging](https://githu
 - [Help](#help)
 
 ### Install
-1. Click **Star** on this repo near the top-right corner of this web page.
+1. Click **Star** on this repo near the top-right corner of this web page (if you want to).
 2. Join our [slack](http://slack.giveth.io) if you haven't already.
 3. Fork this repo by clicking **Fork** button in top-right corner of this web page. Continue to follow instruction steps from your own lpp-milestone repo.
 5. The rest of these steps must be done from your machine's command line. Clone your own "lpp-milestone" repo: 
