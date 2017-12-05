@@ -36,11 +36,11 @@
     "babel-preset-env": "^1.6.0",
     "lerna": "^2.2.0",
     "ethereumjs-testrpc": "git://github.com/perissology/testrpc.git#81216dbc",
-    "solcpiler": "git://github.com/jbaylina/solcpiler.git#50cd2a675a713c454cf6b64d8d0cf640114b696b",
+    "solcpiler": "0.0.10",
     "web3": "1.0.0-beta.24"
   },
   "dependencies": {
-    "liquidpledging": "0.0.9",
+    "liquidpledging": "git://github.com/giveth/liquidpledging.git#28313ee",
     "chai": "^4.1.2",
     "eth-contract-class": "0.0.6"
   }
