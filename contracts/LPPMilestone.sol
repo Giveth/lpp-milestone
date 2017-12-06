@@ -1,8 +1,9 @@
 pragma solidity ^0.4.13;
 
 import "liquidpledging/contracts/LiquidPledging.sol";
+import "giveth-common-contracts/contracts/Escapable.sol";
 
-contract LPPMilestone {
+contract LPPMilestone is Escapable {
     uint constant FROM_OWNER = 0;
     uint constant FROM_INTENDEDPROJECT = 255;
     uint constant TO_OWNER = 256;
@@ -26,8 +27,13 @@ contract LPPMilestone {
 
     event MilestoneAccepted(address indexed liquidPledging);
 
-    function LPPMilestone() {
+    function LPPMilestone(
+        address _escapeHatchCaller,
+        address _escapeHatchDestination
+    ) Escapable(_escapeHatchCaller, _escapeHatchDestination) public
+    {
         require(msg.sender != tx.origin);
+        removeOwnership(0xdac);
         initPending = true;
     }
 
@@ -122,12 +128,12 @@ contract LPPMilestone {
         ) initialized returns (uint maxAllowed){
         require(msg.sender == address(liquidPledging));
         var (, , , fromIntendedProject , , , ) = liquidPledging.getPledge(pledgeFrom);
-        var (, , , , , , toPaymentState ) = liquidPledging.getPledge(pledgeTo);
+        var (, , , , , , toPledgeState ) = liquidPledging.getPledge(pledgeTo);
         // If it is proposed or comes from somewhere else of a proposed project, do not allow.
         // only allow from the proposed project to the project in order normalize it.
         if (   (context == TO_INTENDEDPROJECT)
             || (   (context == TO_OWNER)
-                && (fromIntendedProject != idProject) && (toPaymentState == LiquidPledgingBase.PaymentState.Pledged)))
+                && (fromIntendedProject != idProject) && (toPledgeState == LiquidPledgingBase.PledgeState.Pledged)))
         {
             if (accepted || isCanceled()) return 0;
         }

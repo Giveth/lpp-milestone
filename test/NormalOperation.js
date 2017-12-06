@@ -3,18 +3,15 @@
 const TestRPC = require('ethereumjs-testrpc');
 const Web3 = require('web3');
 const chai = require('chai');
-const liquidpledging = require('liquidpledging');
+const { LPVault, LiquidPledging, LiquidPledgingState } = require('liquidpledging');
 const assertFail = require('./helpers/assertFail');
 
 const { utils } = Web3;
 
-const LiquidPledging = liquidpledging.LiquidPledging;
-const LiquidPledgingState = liquidpledging.LiquidPledgingState;
 const LPPMilestone = require('../lib/LPPMilestone');
 const LPPMilestoneFactory = require('../lib/LPPMilestoneFactory');
-const LPPMilestoneRuntimeBytecode = require('../build/LPPMilestoneFactory.sol').LPPMilestoneRuntimeByteCode;
+const { LPPMilestoneRuntimeByteCode } = require('../build/LPPMilestoneFactory.sol');
 
-const Vault = liquidpledging.Vault;
 const assert = chai.assert;
 
 
@@ -27,7 +24,7 @@ const printBalances = async(liquidPledging) => {
   const st = await liquidPledging.getState();
   assert.equal(st.pledges.length, 13);
   for (let i = 1; i <= 12; i += 1) {
-    console.log(i, ethConnector.web3.fromWei(st.notes[i].amount).toNumber());
+    console.log(i, ethConnector.web3.fromWei(st.pledges[i].amount).toNumber());
   }
 };
 
@@ -85,16 +82,16 @@ describe('LiquidPledging test', function() {
   });
 
   it('Should deploy LiquidPledgin contract', async () => {
-    vault = await Vault.new(web3);
-    liquidPledging = await LiquidPledging.new(web3, vault.$address, { $gas: 5800000 });
+    vault = await LPVault.new(web3, accounts[0], accounts[1]);
+    liquidPledging = await LiquidPledging.new(web3, vault.$address, accounts[0], accounts[1], { $gas: 5800000 });
     await vault.setLiquidPledging(liquidPledging.$address);
 
     liquidPledgingState = new LiquidPledgingState(liquidPledging);
 
-    const codeHash = web3.utils.keccak256(LPPMilestoneRuntimeBytecode);
+    const codeHash = web3.utils.keccak256(LPPMilestoneRuntimeByteCode);
     await liquidPledging.addValidPlugin(codeHash);
 
-    factory = await LPPMilestoneFactory.new(web3);
+    factory = await LPPMilestoneFactory.new(web3, accounts[0], accounts[1]);
   });
 
   it('Should create a donor', async () => {
@@ -144,7 +141,7 @@ describe('LiquidPledging test', function() {
   });
 
   it('Should deploy the plugin', async () => {
-    await factory.deploy(liquidPledging.$address, 'Milestone1', 'URLMilestone1', 0, recipient, utils.toWei('1'), milestoneReviewer, campaignReviewer, { from: adminMilestone1, gas:5000000 });
+    await factory.deploy(liquidPledging.$address, 'Milestone1', 'URLMilestone1', 0, recipient, utils.toWei('1'), milestoneReviewer, campaignReviewer, accounts[0], accounts[1], { from: adminMilestone1, gas:5000000 });
     const nAdmins = await liquidPledging.numberOfPledgeAdmins();
     assert.equal(nAdmins, 3);
     const res = await liquidPledging.getPledgeAdmin(3);
@@ -174,7 +171,7 @@ describe('LiquidPledging test', function() {
     assert.equal(res.intendedProject, 0);
     assert.equal(res.commitTime, 0);
     assert.equal(res.oldPledge, 1);
-    assert.equal(res.paymentState, 0);
+    assert.equal(res.pledgeState, 0);
   });
 
   it('Should not be able to withdraw non-accepted milestone', async () => {
@@ -199,14 +196,14 @@ describe('LiquidPledging test', function() {
     const payingPledge = st.pledges[4];
 
     assert.equal(oldPledge.amount, '0');
-    assert.equal(oldPledge.paymentState, 'Pledged');
+    assert.equal(oldPledge.pledgeState, 'Pledged');
 
     assert.equal(payingPledge.amount, '1000');
     assert.equal(payingPledge.owner, 3);
     assert.equal(payingPledge.delegates.length, 0);
     assert.equal(payingPledge.intendedProject, 0);
     assert.equal(payingPledge.oldPledge, 1);
-    assert.equal(payingPledge.paymentState, 'Paying');
+    assert.equal(payingPledge.pledgeState, 'Paying');
   });
 
   it('Should confirm payment and complete withdraw', async () => {
@@ -219,7 +216,7 @@ describe('LiquidPledging test', function() {
     assert.equal(endBal, web3.utils.toBN(startBal).add(web3.utils.toBN('1000')).toString());
 
     assert.equal(paidPledge.amount, '1000');
-    assert.equal(paidPledge.paymentState, '2'); // Paid payment state
+    assert.equal(paidPledge.pledgeState, '2'); // Paid pledge state
   });
 
   it('Recipient should be able to collect from contract', async () => {
